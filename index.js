@@ -43,49 +43,66 @@ function save() {
 
 // ================== SLASH COMMANDS ==================
 const commands = [
+
   new SlashCommandBuilder()
     .setName('setwarnemoji')
     .setDescription('تحديد ايموجي التحذير')
-    .addStringOption(o => o.setName('emoji').setDescription('الايموجي').setRequired(true)),
+    .addStringOption(o =>
+      o.setName('emoji')
+       .setDescription('الايموجي')
+       .setRequired(true)
+    ),
 
   new SlashCommandBuilder()
     .setName('setmodroles')
     .setDescription('تحديد 6 رتب')
-    .addRoleOption(o => o.setName('role1').setRequired(true))
-    .addRoleOption(o => o.setName('role2'))
-    .addRoleOption(o => o.setName('role3'))
-    .addRoleOption(o => o.setName('role4'))
-    .addRoleOption(o => o.setName('role5'))
-    .addRoleOption(o => o.setName('role6')),
+    .addRoleOption(o => o.setName('role1').setDescription('رتبة 1').setRequired(true))
+    .addRoleOption(o => o.setName('role2').setDescription('رتبة 2'))
+    .addRoleOption(o => o.setName('role3').setDescription('رتبة 3'))
+    .addRoleOption(o => o.setName('role4').setDescription('رتبة 4'))
+    .addRoleOption(o => o.setName('role5').setDescription('رتبة 5'))
+    .addRoleOption(o => o.setName('role6').setDescription('رتبة 6')),
 
   new SlashCommandBuilder()
     .setName('setlogchannel')
     .setDescription('تحديد روم اللوق')
-    .addChannelOption(o => o.setName('channel').setRequired(true)),
+    .addChannelOption(o =>
+      o.setName('channel')
+       .setDescription('روم اللوق')
+       .setRequired(true)
+    ),
 
   new SlashCommandBuilder()
     .setName('setmessages')
     .setDescription('تحديد 5 رسائل')
-    .addStringOption(o => o.setName('m1').setRequired(true))
-    .addStringOption(o => o.setName('m2').setRequired(true))
-    .addStringOption(o => o.setName('m3').setRequired(true))
-    .addStringOption(o => o.setName('m4').setRequired(true))
-    .addStringOption(o => o.setName('m5').setRequired(true)),
+    .addStringOption(o => o.setName('m1').setDescription('رسالة 1').setRequired(true))
+    .addStringOption(o => o.setName('m2').setDescription('رسالة 2').setRequired(true))
+    .addStringOption(o => o.setName('m3').setDescription('رسالة 3').setRequired(true))
+    .addStringOption(o => o.setName('m4').setDescription('رسالة 4').setRequired(true))
+    .addStringOption(o => o.setName('m5').setDescription('رسالة 5').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('clearwarns')
     .setDescription('حذف تحذيرات شخص')
-    .addUserOption(o => o.setName('user').setRequired(true))
+    .addUserOption(o =>
+      o.setName('user')
+       .setDescription('الشخص')
+       .setRequired(true)
+    )
 ];
 
 // تسجيل الأوامر
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 (async () => {
-  await rest.put(
-    Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-    { body: commands }
-  );
-  console.log("✅ Commands Registered");
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log("✅ Commands Registered");
+  } catch (e) {
+    console.log(e);
+  }
 })();
 
 // ================== COMMAND HANDLER ==================
@@ -162,7 +179,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const msg = reaction.message;
 
-    // منع التكرار
     if (!data.usedMessages[msg.id]) data.usedMessages[msg.id] = [];
     if (data.usedMessages[msg.id].includes(user.id)) return;
 
@@ -170,20 +186,16 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const target = msg.author;
 
-    // حذف الرسالة
     await msg.delete();
 
-    // تحذيرات
     if (!data.warns[target.id]) data.warns[target.id] = 0;
     data.warns[target.id]++;
 
     const count = data.warns[target.id];
 
-    // رسالة عشوائية
     const randomMsg = data.messages[Math.floor(Math.random() * data.messages.length)];
     msg.channel.send(`<@${target.id}> ${randomMsg}`);
 
-    // لوق
     if (data.logChannel) {
       const ch = guild.channels.cache.get(data.logChannel);
       if (ch) {
@@ -191,7 +203,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
       }
     }
 
-    // عقوبة
     if (count >= 3) {
       const targetMember = await guild.members.fetch(target.id);
       await targetMember.timeout(2 * 60 * 60 * 1000, '3 warns');
