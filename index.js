@@ -5,8 +5,10 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  PermissionsBitField
+  PermissionsBitField,
+  EmbedBuilder
 } = require('discord.js');
+
 const fs = require('fs');
 
 const TOKEN = process.env.TOKEN;
@@ -110,13 +112,13 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return interaction.reply({ content: '❌ Admin فقط', ephemeral: true });
+    return interaction.reply({ content: 'Admin فقط', ephemeral: true });
   }
 
   if (interaction.commandName === 'setwarnemoji') {
     data.warnEmoji = interaction.options.getString('emoji');
     save();
-    interaction.reply('✅ تم');
+    interaction.reply('تم');
   }
 
   if (interaction.commandName === 'setmodroles') {
@@ -126,13 +128,13 @@ client.on('interactionCreate', async interaction => {
       if (role) data.modRoles.push(role.id);
     }
     save();
-    interaction.reply('✅ تم حفظ الرتب');
+    interaction.reply('تم حفظ الرتب');
   }
 
   if (interaction.commandName === 'setlogchannel') {
     data.logChannel = interaction.options.getChannel('channel').id;
     save();
-    interaction.reply('✅ تم');
+    interaction.reply('تم');
   }
 
   if (interaction.commandName === 'setmessages') {
@@ -144,14 +146,14 @@ client.on('interactionCreate', async interaction => {
       interaction.options.getString('m5')
     ];
     save();
-    interaction.reply('✅ تم حفظ الرسائل');
+    interaction.reply('تم حفظ الرسائل');
   }
 
   if (interaction.commandName === 'clearwarns') {
     const user = interaction.options.getUser('user');
     data.warns[user.id] = 0;
     save();
-    interaction.reply(`✅ تم تصفير تحذيرات ${user}`);
+    interaction.reply(`تم تصفير تحذيرات ${user}`);
   }
 });
 
@@ -185,6 +187,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     data.usedMessages[msg.id].push(user.id);
 
     const target = msg.author;
+    const deletedContent = msg.content;
 
     await msg.delete();
 
@@ -192,22 +195,41 @@ client.on('messageReactionAdd', async (reaction, user) => {
     data.warns[target.id]++;
 
     const count = data.warns[target.id];
+    const remaining = 3 - count;
 
     const randomMsg = data.messages[Math.floor(Math.random() * data.messages.length)];
-    msg.channel.send(`<@${target.id}> ${randomMsg}`);
 
+    msg.channel.send(`<@${target.id}> ${randomMsg} (${count}/3) باقي ${remaining}`);
+
+    // ===== LOG EMBED =====
     if (data.logChannel) {
       const ch = guild.channels.cache.get(data.logChannel);
       if (ch) {
-        ch.send(`⚠️ ${target.tag} | Warn: ${count} | By: ${user.tag}`);
+        const embed = new EmbedBuilder()
+          .setColor('Red')
+          .setAuthor({
+            name: user.tag,
+            iconURL: user.displayAvatarURL()
+          })
+          .setThumbnail(target.displayAvatarURL())
+          .addFields(
+            { name: 'المخالف', value: `<@${target.id}>`, inline: true },
+            { name: 'المحذر', value: `<@${user.id}>`, inline: true },
+            { name: 'التحذيرات', value: `${count}/3`, inline: true },
+            { name: 'الرسالة', value: deletedContent || 'بدون نص' }
+          )
+          .setTimestamp();
+
+        ch.send({ embeds: [embed] });
       }
     }
 
+    // ===== TIMEOUT =====
     if (count >= 3) {
       const targetMember = await guild.members.fetch(target.id);
       await targetMember.timeout(2 * 60 * 60 * 1000, '3 warns');
 
-      msg.channel.send(`⏱️ <@${target.id}> تم إعطاؤه تايم أوت ساعتين`);
+      msg.channel.send(`<@${target.id}> تم إعطاؤه تايم أوت ساعتين`);
 
       data.warns[target.id] = 0;
     }
