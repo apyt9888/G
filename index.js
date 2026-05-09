@@ -32,7 +32,8 @@ let data = {
   logChannel: null,
   messages: [],
   warns: {},
-  usedMessages: {}
+  usedMessages: {},
+  timeouts: {} // 👈 الجديد
 };
 
 if (fs.existsSync('./data.json')) {
@@ -224,12 +225,33 @@ client.on('messageReactionAdd', async (reaction, user) => {
       }
     }
 
-    // ===== TIMEOUT =====
+    // ===== TIMEOUT (تدريجي) =====
     if (count >= 3) {
       const targetMember = await guild.members.fetch(target.id);
-      await targetMember.timeout(2 * 60 * 60 * 1000, '3 warns');
 
-      msg.channel.send(`<@${target.id}> تم إعطاؤه تايم أوت ساعتين`);
+      if (!data.timeouts[target.id]) data.timeouts[target.id] = 0;
+      data.timeouts[target.id]++;
+
+      let duration;
+      let text;
+
+      if (data.timeouts[target.id] === 1) {
+        duration = 10 * 60 * 1000;
+        text = '10 دقايق';
+      } else if (data.timeouts[target.id] === 2) {
+        duration = 30 * 60 * 1000;
+        text = 'نص ساعة';
+      } else {
+        duration = 60 * 60 * 1000;
+        text = 'ساعة';
+
+        // يرجع من البداية
+        data.timeouts[target.id] = 0;
+      }
+
+      await targetMember.timeout(duration, 'warn system');
+
+      msg.channel.send(`<@${target.id}> تم إعطاؤه تايم أوت ${text}`);
 
       data.warns[target.id] = 0;
     }
